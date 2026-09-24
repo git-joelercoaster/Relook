@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Relook</title>
+<style>
+/* The window's own page. Only two parts of it are visible: the divider between the
+   panes and the browser toolbar above the right pane. Same tokens as index.html. */
+:root { --panel: #ffffff; --line: #e2e5e9; --text: #1c222a; --muted: #9aa1ab; --field: #f5f6f8; --accent: #2481cc; --hover: #eef1f4; }
+/* Dark tokens: chosen by the app (data-theme), or by the OS when no app sets it. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) { --panel: #161b21; --line: #262d36; --text: #e5e8ec; --muted: #5e6773; --field: #0e1217; --accent: #52a7e8; --hover: #1f252d; }
+}
+:root[data-theme="dark"] { --panel: #161b21; --line: #262d36; --text: #e5e8ec; --muted: #5e6773; --field: #0e1217; --accent: #52a7e8; --hover: #1f252d; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--panel); color: var(--text); font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif; user-select: none; }
+#divider { position: absolute; top: 0; bottom: 0; left: var(--left, 50%); width: var(--div, 5px); background: var(--line); cursor: col-resize; }
+#divider:hover, #divider.drag { background: var(--accent); }
+#bar { position: absolute; top: 0; right: 0; left: calc(var(--left, 50%) + var(--div, 5px)); height: var(--bar, 46px); display: flex; align-items: center; gap: 6px; padding: 0 10px; border-bottom: 1px solid var(--line); background: var(--panel); }
+button { font: inherit; color: inherit; cursor: pointer; }
+.icon { width: 30px; height: 30px; flex: none; display: grid; place-items: center; border: none; border-radius: 6px; background: transparent; color: var(--text); padding: 0; }
+.icon:hover:not(:disabled) { background: var(--hover); }
+.icon svg { width: 16px; height: 16px; }
+.btn { height: 30px; flex: none; padding: 0 13px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); white-space: nowrap; }
+.btn:hover:not(:disabled) { border-color: var(--accent); background: var(--hover); }
+button:disabled { color: var(--muted); cursor: default; }
+.sep { width: 1px; height: 16px; background: var(--line); margin: 0 4px; flex: none; }
+#addr { flex: 1; min-width: 80px; height: 30px; border: 1px solid var(--line); border-radius: 6px; background: var(--field); color: var(--text); padding: 0 10px; font: inherit; user-select: text; }
+#addr:focus { outline: none; border-color: var(--accent); }
+#addr::placeholder { color: var(--muted); }
+</style>
+</head>
+<body>
+<div id="divider" title="Drag to resize"></div>
+<div id="bar">
+  <button class="icon" id="back" title="Back" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 5 8l5 5"/></svg></button>
+  <button class="icon" id="forward" title="Forward" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 3 5 5-5 5"/></svg></button>
+  <button class="icon" id="reload" title="Reload" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"/><path d="M13 2.5V5h-2.5"/></svg></button>
+  <span class="sep"></span>
+  <button class="btn" id="message" title="Back to the message this link came from" disabled>Message</button>
+  <input id="addr" placeholder="Link address" spellcheck="false" autocomplete="off">
+  <button class="btn" id="external" title="Open this page in your default browser" disabled>Open in browser</button>
+</div>
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+const host = window.relookHost;
+const post = (m) => host && host.postMessage(m);
+
+host && host.addEventListener("message", (e) => {
+  const d = e.data || {};
+  if (d.type === "appearance") document.documentElement.dataset.theme = d.dark ? "dark" : "light";
+  if (d.type === "layout") {
+    const r = document.documentElement.style;
+    r.setProperty("--left", d.left + "px"); r.setProperty("--div", d.divider + "px"); r.setProperty("--bar", d.bar + "px");
+  }
+  if (d.type === "nav") {
+    $("#back").disabled = !d.canBack;
+    $("#forward").disabled = !d.canForward;
+    $("#reload").disabled = !d.web;
+    $("#external").disabled = !d.web;
+    $("#message").disabled = !(d.web && d.hasMessage);
+    if (document.activeElement !== $("#addr")) $("#addr").value = d.web ? d.url : "";
+  }
+});
+
+for (const id of ["back", "forward", "reload", "message", "external"]) $("#" + id).addEventListener("click", () => post({ type: id }));
+$("#addr").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { post({ type: "navigate", url: $("#addr").value }); $("#addr").blur(); }
+  if (e.key === "Escape") $("#addr").blur();
+});
+
+// Divider: pointer capture keeps the drag here even when the cursor crosses the other panes.
+const div = $("#divider");
+let dragging = false, pending = null;
+div.addEventListener("pointerdown", (e) => { dragging = true; div.classList.add("drag"); div.setPointerCapture(e.pointerId); post({ type: "dragStart" }); });
+div.addEventListener("pointermove", (e) => {
+  if (!dragging) return;
+  const first = pending === null;
+  pending = e.clientX;
+  if (first) requestAnimationFrame(() => { post({ type: "split", x: pending }); pending = null; });
+});
+const end = () => { if (!dragging) return; dragging = false; div.classList.remove("drag"); post({ type: "dragEnd" }); };
+div.addEventListener("pointerup", end);
+div.addEventListener("lostpointercapture", end);
+
+post({ type: "ready" });
+</script>
+</body>
+</html>

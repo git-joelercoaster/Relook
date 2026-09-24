@@ -1,0 +1,9 @@
+node_modules/
+dist/
+out/
+*.log
+.DS_Store
+Thumbs.db
+# Never commit real chat exports. The sample in tests/fixtures is fictional.
+/Telegram Desktop/
+/ChatExport_*/

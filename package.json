@@ -1,0 +1,114 @@
+{
+  "name": "relook",
+  "productName": "Relook",
+  "version": "0.2.0",
+  "description": "A viewer for Telegram chat exports: browse by date, search everything, play media, and open links in place. Not affiliated with Telegram.",
+  "main": "src/main.js",
+  "author": "Leonidas \"Joel\" Reyes",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux",
+    "test": "node tests/e2e.mjs"
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.0.0",
+    "playwright": "^1.56.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/git-joelercoaster/Relook.git"
+  },
+  "build": {
+    "appId": "io.compusoft.relook",
+    "productName": "Relook",
+    "copyright": "Copyright © 2026 Leonidas Reyes",
+    "files": [
+      "src/**",
+      "web/**",
+      "build/icon.png",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "artifactName": "Relook-${version}-${os}-${arch}.${ext}",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Relook-${version}-setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "Relook-${version}-portable.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.utilities",
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Utility",
+      "icon": "build/icon.png",
+      "maintainer": "Leonidas Reyes",
+      "synopsis": "Viewer for Telegram chat exports",
+      "syncDesktopName": true
+    },
+    "publish": {
+      "provider": "github"
+    }
+  },
+  "desktopName": "relook.desktop"
+}

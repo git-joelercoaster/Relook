@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relook</title>
+<style>
+:root {
+  --bg: #f5f6f8; --panel: #ffffff; --line: #e2e5e9; --text: #1c222a; --muted: #6a7380;
+  --accent: #2481cc; --accent-weak: #e5f0fa; --sel: #d8e9f8; --chip: #eef1f4;
+  --shadow: 0 6px 24px rgba(20, 30, 45, .14);
+}
+/* Dark tokens: chosen by the app (data-theme), or by the OS when no app sets it. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --bg: #0e1217; --panel: #161b21; --line: #262d36; --text: #e5e8ec; --muted: #8b95a2;
+    --accent: #52a7e8; --accent-weak: #15283a; --sel: #1b3247; --chip: #1f252d;
+    --shadow: 0 6px 24px rgba(0, 0, 0, .5);
+  }
+}
+:root[data-theme="dark"] {
+    --bg: #0e1217; --panel: #161b21; --line: #262d36; --text: #e5e8ec; --muted: #8b95a2;
+    --accent: #52a7e8; --accent-weak: #15283a; --sel: #1b3247; --chip: #1f252d;
+    --shadow: 0 6px 24px rgba(0, 0, 0, .5);
+  }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+
+.topbar { flex: none; height: 46px; display: flex; align-items: center; gap: 8px; padding: 0 10px; background: var(--panel); border-bottom: 1px solid var(--line); }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 8px 10px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; height: 30px; padding: 0 13px; line-height: 28px; font-size: 14px; white-space: nowrap; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.search { flex: 1 1 220px; min-width: 180px; position: relative; }
+.search input { width: 100%; height: 30px; border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 0 10px 0 30px; }
+.search input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+.search::before { content: ""; position: absolute; left: 10px; top: 50%; width: 10px; height: 10px; border: 2px solid var(--muted); border-radius: 50%; transform: translateY(-62%); }
+.search::after { content: ""; position: absolute; left: 20px; top: 58%; width: 6px; height: 2px; background: var(--muted); transform: rotate(45deg); }
+.row2 { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; width: 100%; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { border: 1px solid transparent; background: var(--chip); border-radius: 999px; padding: 2px 10px; font-size: 13px; }
+.chip.on { background: var(--accent); color: #fff; }
+.chip .n { opacity: .7; margin-left: 4px; font-size: 12px; }
+select.sender { height: 30px; border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 0 6px; max-width: 190px; }
+.status { font-size: 12px; color: var(--muted); padding: 4px 10px; border-bottom: 1px solid var(--line); background: var(--panel); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.status b { color: var(--text); font-weight: 600; }
+.status .tag { background: var(--accent-weak); color: var(--accent); border-radius: 5px; padding: 0 6px; margin-left: 6px; }
+select.theme { height: 30px; border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 0 6px; }
+#rootInfo { flex: 1; min-width: 0; font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#progress { height: 3px; background: var(--accent); width: 0; transition: width .2s; }
+
+main { flex: 1; min-height: 0; display: grid; grid-template-columns: 190px minmax(0, 1fr); }
+#dates { overflow: auto; border-right: 1px solid var(--line); background: var(--panel); padding: 6px 0 20px; font-size: 13px; }
+.dnode { display: flex; align-items: center; gap: 4px; padding: 3px 10px; cursor: pointer; user-select: none; }
+.dnode:hover { background: var(--chip); }
+.dnode.on { background: var(--sel); font-weight: 600; }
+.dnode .tw { width: 14px; color: var(--muted); font-size: 10px; text-align: center; }
+.dnode .lbl { flex: 1; }
+.dnode .c { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.dnode.l1 { padding-left: 22px; }
+.dnode.l2 { padding-left: 42px; }
+.dnode.all { font-weight: 600; border-bottom: 1px solid var(--line); margin-bottom: 4px; padding-top: 5px; padding-bottom: 7px; }
+
+#listWrap { position: relative; min-height: 0; }
+#listPane { position: absolute; inset: 0; overflow: auto; outline: none; }
+#listWrap.ov #listPane { top: 58px; }
+#spacer { position: relative; }
+.row { position: absolute; left: 0; right: 0; height: 60px; padding: 7px 12px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center; cursor: pointer; }
+.row:hover { background: var(--chip); }
+.row.sel { background: var(--sel); }
+.ico { width: 44px; height: 44px; border-radius: 7px; background: var(--chip); display: flex; align-items: center; justify-content: center; overflow: hidden; font-size: 10px; font-weight: 700; letter-spacing: .04em; color: var(--muted); }
+.ico img { width: 100%; height: 100%; object-fit: cover; }
+.ico.link { color: var(--accent); background: var(--accent-weak); font-size: 16px; }
+.l1t { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.l1t b { color: var(--text); font-weight: 600; }
+.l2t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cell { position: absolute; width: 124px; height: 124px; border-radius: 7px; overflow: hidden; background: var(--chip); cursor: pointer; }
+.cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cell.sel { outline: 3px solid var(--accent); outline-offset: -3px; }
+.cell .badge { position: absolute; right: 4px; bottom: 4px; background: rgba(0, 0, 0, .66); color: #fff; font-size: 11px; padding: 1px 5px; border-radius: 4px; }
+.cell .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--muted); }
+
+#overlay { position: absolute; top: 10px; left: 12px; right: 12px; z-index: 5; display: none; background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); border-radius: 10px; padding: 8px; gap: 8px; align-items: center; }
+#overlay.show { display: flex; }
+#overlay .scope { font-size: 12px; color: var(--accent); background: var(--accent-weak); border-radius: 5px; padding: 2px 7px; white-space: nowrap; }
+#overlay input { flex: 1; border: none; background: transparent; outline: none; padding: 4px; min-width: 60px; }
+#overlay .cnt { font-size: 12px; color: var(--muted); white-space: nowrap; }
+#overlay button { border: none; background: var(--chip); border-radius: 6px; padding: 2px 8px; }
+
+.empty { padding: 40px 28px; max-width: 540px; color: var(--muted); }
+.empty h2 { color: var(--text); font-size: 20px; margin: 0 0 8px; }
+.empty li { margin: 6px 0; }
+kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font-size: 12px; background: var(--chip); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <button class="btn primary" id="pick">Open export folder</button>
+  <button class="btn" id="rescan" hidden title="Scan the folder again">Rescan</button>
+  <span id="rootInfo"></span>
+  <select class="theme" id="theme" title="Appearance">
+    <option value="system">Windows default</option>
+    <option value="light">Light</option>
+    <option value="dark">Dark</option>
+  </select>
+</div>
+<header>
+  <div class="row2">
+    <div class="search"><input id="gq" type="search" placeholder="Search everything (all dates)" autocomplete="off"></div>
+    <select class="sender" id="sender" title="Filter by sender"><option value="">All senders</option></select>
+    <button class="btn" id="order" title="Toggle sort order">Newest first</button>
+  </div>
+  <div class="chips" id="chips"></div>
+</header>
+<div id="progress"></div>
+<div class="status" id="status">Starting…</div>
+<main>
+  <nav id="dates" aria-label="Dates"></nav>
+  <section id="listWrap">
+    <div id="overlay">
+      <span class="scope" id="ovScope">All dates</span>
+      <input id="oq" type="search" placeholder="Search within selection" autocomplete="off">
+      <span class="cnt" id="ovCnt"></span>
+      <button id="ovClose" title="Close (Esc)">Esc</button>
+    </div>
+    <div id="listPane" tabindex="0"><div id="spacer"></div></div>
+  </section>
+</main>
+
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+// The desktop shell: Electron (window.relookHost) or the Windows WebView2 build (window.chrome.webview).
+const host = window.relookHost || (window.chrome && window.chrome.webview);
+const post = (m) => host && host.postMessage(m);
+const ROW = 60, CELL = 124, GAP = 8;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const TYPES = [["all", "All"], ["text", "Text"], ["links", "Links"], ["photo", "Photos"], ["video", "Videos"], ["audio", "Audio"], ["file", "Files"]];
+
+const S = {
+  msgs: [], files: new Set(), filter: "all", gq: "", oq: "", sender: "", newest: true,
+  range: null, open: new Set(), view: new Int32Array(0), viewLink: null, sel: -1, counts: {}, loadInfo: "",
+  base: "/f/"                    // where the shell serves export files; Electron adds a per-launch token
+};
+
+/* ---------- helpers ---------- */
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const clean = (s) => String(s || "").replace(/\s+/g, " ").trim();
+const tick = () => new Promise((r) => setTimeout(r, 0));
+const fmtNum = (n) => n.toLocaleString();
+function decodePath(p) { try { return decodeURIComponent(p); } catch { return p; } }
+function parseDate(title) {
+  const m = /(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2}):(\d{2})(?: UTC([+-]\d{2}):?(\d{2}))?/.exec(title || "");
+  if (!m) return 0;
+  const t = Date.parse(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:${m[6]}${m[7] ? m[7] + ":" + m[8] : ""}`);
+  return isNaN(t) ? 0 : t;
+}
+function typeByExt(ext) {
+  if (/^(jpe?g|png|gif|webp|bmp|heic)$/.test(ext)) return "photo";
+  if (/^(mp4|mov|m4v|webm|mkv|avi|3gp)$/.test(ext)) return "video";
+  if (/^(ogg|oga|opus|mp3|m4a|wav|aac|flac)$/.test(ext)) return "audio";
+  if (ext === "pdf") return "pdf";
+  return "file";
+}
+function resolve(path) {
+  if (!path) return "";
+  if (S.files.has(path)) return path;
+  const d = decodePath(path);
+  return S.files.has(d) ? d : "";
+}
+const fileFor = (p) => resolve(p) !== "";
+const fileUrl = (p) => S.base + p.split("/").map(encodeURIComponent).join("/");
+const urlFor = (p) => { const r = resolve(p); return r ? fileUrl(r) : ""; };
+function fmtDate(t, withTime = true) {
+  if (!t) return "";
+  const d = new Date(t);
+  return withTime ? d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : d.toLocaleDateString(undefined, { dateStyle: "medium" });
+}
+function mediaLabel(m) {
+  if (!m.media) return "";
+  return { photo: "Photo", video: "Video", audio: m.media.voice ? "Voice message" : "Audio", pdf: "PDF", file: "File" }[m.media.type] || "File";
+}
+const kindOf = (m) => (m.media ? (m.media.type === "pdf" ? "file" : m.media.type) : "");
+function setStatus(html) { $("#status").innerHTML = html; }
+
+/* ---------- messages from the Windows app ---------- */
+if (host) {
+  host.addEventListener("message", (e) => {
+    const d = e.data || {};
+    if (d.type === "needFolder") { setStatus("Choose your Telegram export folder to begin."); renderList(); }
+    if (d.type === "scanning") { setStatus(`Scanning ${esc(d.root)}…`); $("#rootInfo").textContent = d.root; }
+    if (d.type === "error") setStatus(esc(d.message));
+    if (d.type === "theme") $("#theme").value = d.value;
+    if (d.type === "appearance") document.documentElement.dataset.theme = d.dark ? "dark" : "light";
+    if (d.type === "files") { if (d.base) S.base = d.base; $("#rootInfo").textContent = d.root; $("#rescan").hidden = false; loadIndex(d.files); }
+    if (d.type === "jump") {
+      const m = S.msgs.find((x) => x.chat === d.chat && x.id === d.id);
+      if (m) jumpTo(m); else setStatus("That message isn't in this export.");
+    }
+  });
+}
+$("#pick").addEventListener("click", () => post({ type: "pickFolder" }));
+$("#rescan").addEventListener("click", () => post({ type: "rescan" }));
+if (!/Windows/.test(navigator.userAgent)) $('#theme option[value="system"]').textContent = "System default";
+$("#theme").addEventListener("change", (e) => post({ type: "theme", value: e.target.value }));
+
+/* ---------- parsing the export ---------- */
+async function loadIndex(fileList) {
+  S.files = new Set(fileList); S.msgs = []; S.sel = -1; S.range = null; S.open.clear();
+  const exportsMap = new Map();
+  for (const p of S.files) {
+    const m = /^(.*\/)?messages(\d*)\.html$/i.exec(p);
+    if (!m) continue;
+    const dir = m[1] || "";
+    if (!exportsMap.has(dir)) exportsMap.set(dir, []);
+    exportsMap.get(dir).push({ n: m[2] ? +m[2] : 1, path: p });
+  }
+  if (!exportsMap.size) { setStatus("No Telegram export in this folder (looking for messages.html). Pick the “Telegram Desktop” folder or a ChatExport folder."); applyFilters(); return; }
+
+  const total = [...exportsMap.values()].reduce((a, l) => a + l.length, 0);
+  const byKey = new Map(), dp = new DOMParser();
+  let done = 0, dupes = 0;
+  for (const [dir, pages] of exportsMap) {
+    pages.sort((a, b) => a.n - b.n);
+    let lastFrom = "", chat = "";
+    for (const pg of pages) {
+      const html = await (await fetch(fileUrl(pg.path))).text();
+      const doc = dp.parseFromString(html, "text/html");
+      if (!chat) chat = clean(doc.querySelector(".page_header .text.bold")?.textContent) || dir;
+      for (const el of doc.querySelectorAll(".history > .message")) {
+        if (el.classList.contains("service")) continue;
+        const r = parseMessage(el, dir, chat, lastFrom);
+        if (!r) continue;
+        lastFrom = r.from;
+        const key = r.id ? chat + "|" + r.id : null;
+        if (key && byKey.has(key)) {
+          dupes++;
+          const old = byKey.get(key);
+          if (r.media && (!old.media || (!fileFor(old.media.href) && fileFor(r.media.href)))) Object.assign(old, r);
+          continue;
+        }
+        S.msgs.push(r);
+        if (key) byKey.set(key, r);
+      }
+      done++;
+      $("#progress").style.width = (100 * done / total).toFixed(1) + "%";
+      if (done % 3 === 0) { setStatus(`Reading page ${fmtNum(done)} of ${fmtNum(total)}… ${fmtNum(S.msgs.length)} messages`); await tick(); }
+    }
+  }
+
+  S.msgs.sort((a, b) => a.t - b.t || a.id - b.id);
+  const senders = new Map();
+  for (const m of S.msgs) {
+    const d = new Date(m.t || 0);
+    m.y = d.getFullYear(); m.mo = d.getMonth(); m.d = d.getDate();
+    m.s = (m.from + " " + m.fwd + " " + m.text + " " + m.links.join(" ") + " " + (m.media ? m.media.title : "")).toLowerCase();
+    if (m.from) senders.set(m.from, (senders.get(m.from) || 0) + 1);
+  }
+  $("#sender").innerHTML = '<option value="">All senders</option>' +
+    [...senders].sort((a, b) => b[1] - a[1]).map(([n, c]) => `<option value="${esc(n)}">${esc(n)} (${fmtNum(c)})</option>`).join("");
+  S.counts = { all: S.msgs.length, text: 0, links: 0, photo: 0, video: 0, audio: 0, file: 0 };
+  for (const m of S.msgs) {
+    S.counts.links += m.links.length;
+    const k = kindOf(m);
+    if (k) S.counts[k]++; else if (m.text) S.counts.text++;
+  }
+  S.loadInfo = `${fmtNum(S.msgs.length)} messages from ${exportsMap.size} export${exportsMap.size > 1 ? "s" : ""}` + (dupes ? ` (${fmtNum(dupes)} duplicates merged)` : "");
+  $("#progress").style.width = "0";
+  renderChips(); applyFilters(); $("#listPane").focus();
+}
+
+function parseMessage(el, dir, chat, lastFrom) {
+  const body = el.querySelector(":scope > .body");
+  if (!body) return null;
+  const id = +(el.id || "").replace(/\D/g, "") || 0;
+  const t = parseDate(body.querySelector(":scope > .date.details")?.getAttribute("title"));
+  const fe = body.querySelector(":scope > .from_name");
+  const from = fe ? clean(fe.textContent) : lastFrom;
+  const fb = body.querySelector(":scope > .forwarded.body");
+  const root = fb || body;
+  let fwd = "";
+  if (fb) {
+    const f = fb.querySelector(":scope > .from_name");
+    if (f) { const c = f.cloneNode(true); c.querySelectorAll(".date").forEach((x) => x.remove()); fwd = clean(c.textContent); }
+  }
+  let text = "", links = [];
+  const te = root.querySelector(":scope > .text");
+  if (te) {
+    te.querySelectorAll("br").forEach((b) => b.replaceWith("\n"));
+    // Emoji exported as small images keep the real character in alt="…"; put it back as text.
+    te.querySelectorAll("img").forEach((i) => i.replaceWith(i.getAttribute("alt") || ""));
+    for (const a of te.querySelectorAll("a[href]")) { const h = a.getAttribute("href"); if (/^https?:\/\//i.test(h)) links.push(h); }
+    text = te.textContent.replace(/[ \t]+/g, " ").replace(/ ?\n ?/g, "\n").trim();
+  }
+  links = [...new Set(links)];
+  let media = null;
+  const a = root.querySelector(":scope > .media_wrap a[href]");
+  if (a) {
+    const href = a.getAttribute("href"), cls = a.className;
+    const ext = (href.split("?")[0].split(".").pop() || "").toLowerCase();
+    let type = /photo_wrap|sticker_wrap/.test(cls) ? "photo" : /video_file_wrap/.test(cls) ? "video" : /voice_message/.test(cls) ? "audio" : typeByExt(ext);
+    if (ext === "tgs") type = "file";
+    const img = a.querySelector("img");
+    media = {
+      type, voice: /voice_message/.test(cls),
+      href: dir + decodePath(href),
+      thumb: img ? dir + decodePath(img.getAttribute("src")) : "",
+      title: clean(a.querySelector(".title")?.textContent) || decodePath(href.split("/").pop()),
+      status: clean(a.querySelector(".status")?.textContent || a.querySelector(".video_duration")?.textContent)
+    };
+  }
+  const rm = /(\d+)/.exec(body.querySelector(":scope > .reply_to a")?.getAttribute("href") || "");
+  return { id, t, from, fwd, text, links, media, reply: rm ? +rm[1] : 0, chat, dir };
+}
+
+/* ---------- filtering ---------- */
+function inRange(m) {
+  const r = S.range;
+  return !r || (m.y === r.y && (r.m === undefined || (m.mo === r.m && (r.d === undefined || m.d === r.d))));
+}
+function passesType(m) {
+  if (S.filter === "all") return true;
+  if (S.filter === "links") return m.links.length > 0;
+  if (S.filter === "text") return !m.media && m.text.length > 0;   // plain messages, emoji-only included
+  return kindOf(m) === S.filter;
+}
+function currentMsg() { return S.sel >= 0 && S.view.length ? S.msgs[S.view[S.sel]] : null; }
+function applyFilters(keepSel) {
+  const prev = keepSel ? currentMsg() : null;
+  const g = S.gq.trim().toLowerCase(), o = S.oq.trim().toLowerCase();
+  const terms = (g || o).split(/\s+/).filter(Boolean);
+  const idx = [], lnk = [];
+  for (let i = 0; i < S.msgs.length; i++) {
+    const m = S.msgs[i];
+    if (!passesType(m)) continue;
+    if (S.sender && m.from !== S.sender) continue;
+    if (!g && !inRange(m)) continue;                 // the header search ignores the date selection
+    if (terms.length && !terms.every((t) => m.s.includes(t))) continue;
+    if (S.filter === "links") m.links.forEach((u, li) => { idx.push(i); lnk.push(li); });
+    else idx.push(i);
+  }
+  if (S.newest) { idx.reverse(); lnk.reverse(); }
+  S.view = Int32Array.from(idx);
+  S.viewLink = S.filter === "links" ? Int32Array.from(lnk) : null;
+  S.sel = -1;
+  if (prev) { const p = S.msgs.indexOf(prev); for (let k = 0; k < S.view.length; k++) if (S.view[k] === p) { S.sel = k; break; } }
+  if (S.sel < 0 && S.view.length) S.sel = 0;
+  renderDates(); updateStatus(); $("#listPane").scrollTop = 0; renderList(); ensureVisible(); sendSelection();
+}
+function rangeLabel(r = S.range) {
+  if (!r) return "All dates";
+  if (r.m === undefined) return String(r.y);
+  if (r.d === undefined) return `${MONTHS[r.m]} ${r.y}`;
+  return new Date(r.y, r.m, r.d).toLocaleDateString(undefined, { dateStyle: "medium" });
+}
+function updateStatus() {
+  if (!S.msgs.length) return;
+  const what = TYPES.find((t) => t[0] === S.filter)[1].toLowerCase();
+  let s = `<b>${fmtNum(S.view.length)}</b> ${S.filter === "all" ? "messages" : what}`;
+  s += S.gq.trim() ? ` matching “${esc(S.gq.trim())}” <span class="tag">all dates</span>` : ` <span class="tag">${esc(rangeLabel())}</span>`;
+  if (!S.gq.trim() && S.oq.trim()) s += ` matching “${esc(S.oq.trim())}”`;
+  if (S.sender) s += ` <span class="tag">${esc(S.sender)}</span>`;
+  s += ` <span style="margin-left:10px">${esc(S.loadInfo)}</span>`;
+  setStatus(s);
+  $("#ovScope").textContent = rangeLabel();
+  $("#ovCnt").textContent = S.oq.trim() ? fmtNum(S.view.length) + " found" : "";
+}
+
+/* ---------- header controls ---------- */
+function renderChips() {
+  $("#chips").innerHTML = TYPES.map(([k, l]) =>
+    `<button class="chip${S.filter === k ? " on" : ""}" data-k="${k}">${l}<span class="n">${fmtNum(S.counts[k] || 0)}</span></button>`).join("");
+}
+$("#chips").addEventListener("click", (e) => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  S.filter = b.dataset.k; renderChips(); applyFilters(true);
+});
+$("#sender").addEventListener("change", (e) => { S.sender = e.target.value; applyFilters(true); });
+$("#order").addEventListener("click", (e) => { S.newest = !S.newest; e.target.textContent = S.newest ? "Newest first" : "Oldest first"; applyFilters(true); });
+let gqTimer, oqTimer;
+$("#gq").addEventListener("input", (e) => { clearTimeout(gqTimer); gqTimer = setTimeout(() => { S.gq = e.target.value; applyFilters(); }, 220); });
+$("#oq").addEventListener("input", (e) => { clearTimeout(oqTimer); oqTimer = setTimeout(() => { S.oq = e.target.value; applyFilters(); }, 180); });
+function openOverlay() {
+  if (!S.msgs.length) return;
+  if (S.gq) { S.gq = ""; $("#gq").value = ""; }
+  $("#overlay").classList.add("show"); $("#listWrap").classList.add("ov"); updateStatus(); $("#oq").focus(); $("#oq").select();
+}
+function closeOverlay() {
+  $("#overlay").classList.remove("show"); $("#listWrap").classList.remove("ov");
+  if (S.oq) { S.oq = ""; $("#oq").value = ""; applyFilters(true); }
+  $("#listPane").focus();
+}
+$("#ovClose").addEventListener("click", closeOverlay);
+
+/* ---------- date tree ---------- */
+function renderDates() {
+  const tree = new Map();
+  let total = 0;
+  for (const m of S.msgs) {
+    if (!passesType(m) || (S.sender && m.from !== S.sender) || !m.t) continue;
+    const n = S.filter === "links" ? m.links.length : 1;
+    total += n;
+    let y = tree.get(m.y); if (!y) tree.set(m.y, y = { n: 0, months: new Map() });
+    let mo = y.months.get(m.mo); if (!mo) y.months.set(m.mo, mo = { n: 0, days: new Map() });
+    y.n += n; mo.n += n; mo.days.set(m.d, (mo.days.get(m.d) || 0) + n);
+  }
+  const r = S.range, on = (y, m, d) => r && r.y === y && r.m === m && r.d === d;
+  const ord = (a, b) => (S.newest ? b - a : a - b);
+  let h = `<div class="dnode all${!r ? " on" : ""}" data-r=""><span class="lbl">All dates</span><span class="c">${fmtNum(total)}</span></div>`;
+  for (const y of [...tree.keys()].sort(ord)) {
+    const Y = tree.get(y), yo = S.open.has(String(y));
+    h += `<div class="dnode${on(y, undefined, undefined) ? " on" : ""}" data-r="${y}"><span class="tw" data-t="${y}">${yo ? "▾" : "▸"}</span><span class="lbl">${y}</span><span class="c">${fmtNum(Y.n)}</span></div>`;
+    if (!yo) continue;
+    for (const mo of [...Y.months.keys()].sort(ord)) {
+      const M = Y.months.get(mo), key = `${y}-${mo}`, mOpen = S.open.has(key);
+      h += `<div class="dnode l1${on(y, mo, undefined) ? " on" : ""}" data-r="${key}"><span class="tw" data-t="${key}">${mOpen ? "▾" : "▸"}</span><span class="lbl">${MONTHS[mo]}</span><span class="c">${fmtNum(M.n)}</span></div>`;
+      if (!mOpen) continue;
+      for (const d of [...M.days.keys()].sort(ord)) {
+        const wd = new Date(y, mo, d).toLocaleDateString(undefined, { weekday: "short" });
+        h += `<div class="dnode l2${on(y, mo, d) ? " on" : ""}" data-r="${key}-${d}"><span class="lbl">${d} <span class="c">${wd}</span></span><span class="c">${fmtNum(M.days.get(d))}</span></div>`;
+      }
+    }
+  }
+  $("#dates").innerHTML = S.msgs.length ? h : "";
+}
+$("#dates").addEventListener("click", (e) => {
+  const node = e.target.closest(".dnode"); if (!node) return;
+  const tw = e.target.closest(".tw");
+  const parts = node.dataset.r ? node.dataset.r.split("-").map(Number) : [];
+  if (tw) { const k = tw.dataset.t; S.open.has(k) ? S.open.delete(k) : S.open.add(k); renderDates(); return; }
+  if (parts.length >= 1) S.open.add(String(parts[0]));
+  if (parts.length >= 2) S.open.add(`${parts[0]}-${parts[1]}`);
+  S.range = parts.length ? { y: parts[0], m: parts[1], d: parts[2] } : null;
+  if (S.gq) { S.gq = ""; $("#gq").value = ""; }
+  applyFilters();
+});
+
+/* ---------- list / grid (virtualized) ---------- */
+const isGrid = () => S.filter === "photo" || S.filter === "video";
+const cols = () => Math.max(1, Math.floor(($("#listPane").clientWidth - GAP) / (CELL + GAP)));
+function helpHtml() {
+  return `<div class="empty"><h2>Welcome to Relook</h2><p>A viewer for your Telegram chat exports.</p><ol>
+    <li>Click <b>Open export folder</b> and choose <b>Telegram Desktop</b> (all exports) or one <b>ChatExport_…</b> folder.</li>
+    <li>Exports of the same chat are merged and duplicates removed. The app remembers the folder next time.</li></ol>
+    <p><b>Browse:</b> pick a year, month or day on the left. <kbd>↑</kbd> <kbd>↓</kbd> move through items; the right side follows.</p>
+    <p><b>Search:</b> the top box searches everything. <kbd>/</kbd> or <kbd>Ctrl</kbd>+<kbd>F</kbd> searches only the selected dates.</p>
+    <p><b>Links</b> open live on the right, in a real browser.</p>
+    <p style="font-size:12px">Not affiliated with Telegram.</p></div>`;
+}
+function renderList() {
+  const pane = $("#listPane"), sp = $("#spacer"), n = S.view.length;
+  if (!S.msgs.length) { sp.style.height = "auto"; sp.innerHTML = helpHtml(); return; }
+  if (!n) { sp.style.height = "auto"; sp.innerHTML = `<div class="empty"><h2>Nothing here</h2>No ${TYPES.find((t) => t[0] === S.filter)[1].toLowerCase()} match the current dates, sender and search.</div>`; return; }
+  let html = "";
+  if (isGrid()) {
+    const c = cols(), rows = Math.ceil(n / c), step = CELL + GAP;
+    sp.style.height = rows * step + GAP + "px";
+    const r0 = Math.max(0, Math.floor(pane.scrollTop / step) - 1), r1 = Math.min(rows, r0 + Math.ceil(pane.clientHeight / step) + 3);
+    for (let r = r0; r < r1; r++) for (let k = 0; k < c; k++) {
+      const i = r * c + k; if (i >= n) break;
+      const m = S.msgs[S.view[i]], th = urlFor(m.media.thumb) || (m.media.type === "photo" ? urlFor(m.media.href) : "");
+      html += `<div class="cell${i === S.sel ? " sel" : ""}" data-i="${i}" style="top:${GAP + r * step}px;left:${GAP + k * step}px">` +
+        (th ? `<img loading="lazy" src="${th}" alt="">` : `<div class="ph">${fileFor(m.media.href) ? mediaLabel(m) : "not exported"}</div>`) +
+        (m.media.type === "video" && m.media.status ? `<span class="badge">${esc(m.media.status)}</span>` : "") + `</div>`;
+    }
+  } else {
+    sp.style.height = n * ROW + "px";
+    const i0 = Math.max(0, Math.floor(pane.scrollTop / ROW) - 3), i1 = Math.min(n, i0 + Math.ceil(pane.clientHeight / ROW) + 8);
+    for (let i = i0; i < i1; i++) {
+      const m = S.msgs[S.view[i]];
+      let ico, l1, l2;
+      if (S.viewLink) {
+        const u = m.links[S.viewLink[i]]; let dom = u; try { dom = new URL(u).hostname.replace(/^www\./, ""); } catch {}
+        ico = `<div class="ico link">↗</div>`;
+        l1 = `<b>${esc(dom)}</b> · ${esc(m.from)} · ${esc(fmtDate(m.t, false))}`;
+        l2 = esc(u);
+      } else {
+        const th = m.media && (urlFor(m.media.thumb) || (m.media.type === "photo" ? urlFor(m.media.href) : ""));
+        ico = th ? `<div class="ico"><img loading="lazy" src="${th}" alt=""></div>` :
+          `<div class="ico">${m.media ? { photo: "IMG", video: "VID", audio: m.media.voice ? "VOICE" : "AUD", pdf: "PDF", file: "FILE" }[m.media.type] : m.links.length ? "LINK" : esc((m.from || "?").slice(0, 2).toUpperCase())}</div>`;
+        l1 = `<b>${esc(m.from)}</b>${m.fwd ? " · fwd " + esc(m.fwd) : ""} · ${esc(fmtDate(m.t))}`;
+        l2 = esc(m.text ? m.text.replace(/\n/g, " ") : m.media ? (m.media.title === mediaLabel(m) ? `[${mediaLabel(m)}]` : `[${mediaLabel(m)}] ${m.media.title}`) : "");
+      }
+      html += `<div class="row${i === S.sel ? " sel" : ""}" data-i="${i}" style="top:${i * ROW}px">${ico}<div style="min-width:0"><div class="l1t">${l1}</div><div class="l2t">${l2}</div></div></div>`;
+    }
+  }
+  sp.innerHTML = html;
+}
+let rafPending = false;
+$("#listPane").addEventListener("scroll", () => { if (!rafPending) { rafPending = true; requestAnimationFrame(() => { rafPending = false; renderList(); }); } });
+window.addEventListener("resize", () => renderList());
+$("#spacer").addEventListener("click", (e) => { const el = e.target.closest("[data-i]"); if (el) select(+el.dataset.i); });
+
+function ensureVisible() {
+  if (S.sel < 0) return;
+  const pane = $("#listPane");
+  let top, h;
+  if (isGrid()) { const step = CELL + GAP; top = Math.floor(S.sel / cols()) * step; h = step + GAP; } else { top = S.sel * ROW; h = ROW; }
+  if (top < pane.scrollTop) pane.scrollTop = top;
+  else if (top + h > pane.scrollTop + pane.clientHeight) pane.scrollTop = top + h - pane.clientHeight;
+}
+function select(i) {
+  if (!S.view.length) return;
+  S.sel = Math.max(0, Math.min(S.view.length - 1, i));
+  ensureVisible(); renderList(); sendSelection();
+}
+document.addEventListener("keydown", (e) => {
+  const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName);
+  if ((e.key === "f" && (e.ctrlKey || e.metaKey)) || (e.key === "/" && !typing)) { e.preventDefault(); openOverlay(); return; }
+  if (e.key === "Escape") { if ($("#overlay").classList.contains("show")) closeOverlay(); else if (typing) document.activeElement.blur(); return; }
+  if (typing && e.target.id !== "oq") return;
+  if (e.target.id === "oq" && !/^(ArrowDown|ArrowUp|Enter)$/.test(e.key)) return;
+  if (e.key === "Enter" && e.target.id === "oq") { $("#listPane").focus(); return; }
+  const c = isGrid() ? cols() : 1;
+  const moves = { ArrowDown: c, ArrowUp: -c, j: 1, k: -1, PageDown: 10 * c, PageUp: -10 * c };
+  if (isGrid()) { moves.ArrowRight = 1; moves.ArrowLeft = -1; }
+  if (e.key in moves) { e.preventDefault(); select((S.sel < 0 ? 0 : S.sel) + moves[e.key]); }
+  if (e.key === "Home" && !typing) { e.preventDefault(); select(0); }
+  if (e.key === "End" && !typing) { e.preventDefault(); select(S.view.length - 1); }
+});
+
+/* ---------- tell the app what's selected ---------- */
+let selTimer;
+function sendSelection() {
+  clearTimeout(selTimer);
+  const m = currentMsg();
+  if (!m) { post({ type: "select", msg: null }); return; }
+  const link = S.viewLink ? m.links[S.viewLink[S.sel]] : "";
+  // Short delay so holding an arrow key doesn't load every page or video on the way.
+  selTimer = setTimeout(() => {
+    post({
+      type: "select", url: link || "",
+      msg: {
+        chat: m.chat, id: m.id, t: m.t, from: m.from, fwd: m.fwd, text: m.text, links: m.links, reply: m.reply,
+        showContext: S.filter !== "all" || !!S.gq.trim() || !!S.oq.trim(),
+        media: m.media ? {
+          type: m.media.type, voice: m.media.voice, title: m.media.title, status: m.media.status,
+          url: urlFor(m.media.href), poster: urlFor(m.media.thumb)
+        } : null
+      }
+    });
+  }, link ? 300 : 120);
+}
+function jumpTo(m) {
+  S.filter = "all"; S.gq = ""; S.oq = ""; $("#gq").value = ""; $("#oq").value = "";
+  $("#overlay").classList.remove("show"); $("#listWrap").classList.remove("ov");
+  S.sender = ""; $("#sender").value = "";
+  S.range = { y: m.y, m: m.mo, d: m.d }; S.open.add(String(m.y)); S.open.add(`${m.y}-${m.mo}`);
+  renderChips(); applyFilters();
+  const p = S.msgs.indexOf(m);
+  for (let k = 0; k < S.view.length; k++) if (S.view[k] === p) { select(k); break; }
+}
+
+/* ---------- start ---------- */
+renderChips(); renderList();
+if (host) post({ type: "ready" });
+else setStatus("This page runs inside the Relook app.");
+window.__tgv = { loadIndex, S };                    // hook for automated tests
+</script>
+</body>
+</html>
