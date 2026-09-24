@@ -1,0 +1,39 @@
+name: Bug report
+description: Something isn't working
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! **Please don't paste real chat content, names or screenshots of your chats.** Describe the problem in general terms, or reproduce it with the sample export in `tests/fixtures`.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Relook version
+      placeholder: e.g. 0.2.0
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Windows 11, Windows 10, macOS (Apple silicon), macOS (Intel), Linux]
+    validations:
+      required: true
+  - type: textarea
+    id: export
+    attributes:
+      label: About the export
+      description: Roughly how big is it (messages / files)? How many exports did you open together? Was it exported as HTML?
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Error messages, or steps to reproduce with the sample export.
